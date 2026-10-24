@@ -14,6 +14,8 @@ The article covers three connected topics:
 
 For the presentation version, [view the live slide deck](https://ra1han.github.io/Engineering-Interoperable-Payments/) on GitHub Pages, or open the [local HTML file](./index.html).
 
+Diagrams animate automatically in a continuous loop while visible, with no playback controls. Labels stay readable throughout. Animation stops off-screen or in a background tab, and stays static for reduced-motion preferences and printing.
+
 ## Agentic Commerce
 
 ### From a Model to an Agent

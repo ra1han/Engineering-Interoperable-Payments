@@ -144,6 +144,16 @@ small{display:block;margin-top:7px;font-size:18px;line-height:1.25;font-weight:4
 .four-grid span{padding:16px 0;font-size:20px}.stop-line{font-size:18px;padding:8px 0 16px;color:var(--accent)}
 .layer{display:grid;grid-template-columns:1fr 1.6fr;gap:24px;padding:12px 0;border-bottom:1px solid var(--border)}
 .layer strong,.layer span{font-size:clamp(18px,1.6vw,23px)}.layer span{color:var(--text-dim)}
+.diagram-node{position:relative}
+.diagram-node.diagram-current{outline:2px solid var(--accent);outline-offset:-2px;background:var(--accent-dim)}
+.diagram-node.blocked.diagram-current{outline-color:var(--risk);outline-style:dashed}
+.diagram-running .diagram-node.diagram-current{animation:diagram-focus .45s ease-out}
+.diagram-edge{position:relative}
+.diagram-running .diagram-edge.diagram-current::after{content:"";position:absolute;left:0;bottom:-6px;width:100%;height:2px;background:var(--accent);transform-origin:left;animation:diagram-travel .8s ease-out both}
+@keyframes diagram-focus{from{transform:translateY(4px)}to{transform:translateY(0)}}
+@keyframes diagram-travel{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@media(prefers-reduced-motion:reduce){.diagram-node.diagram-current{outline:0;background:transparent}.diagram-running .diagram-node.diagram-current{animation:none}.diagram-edge::after{display:none}}
+@media print{.diagram-node.diagram-current{outline:0;background:transparent}.diagram-running .diagram-node.diagram-current{animation:none}.diagram-edge::after{display:none}}
 .vendor li{margin-left:22px;margin-bottom:10px}.slide .sources{font-size:18px}
 a{color:var(--accent);text-underline-offset:3px}
 .deck-dots{backdrop-filter:none;background:var(--bg)}.deck-overlay{backdrop-filter:none}
@@ -802,6 +812,64 @@ dialog::backdrop{background:rgba(0,0,0,.55)}dialog p{margin:12px 0}dialog h3{mar
   finishSlideRender();
 </script>
 <script>
+const diagramMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const diagramPrint = matchMedia('print');
+const diagramPlayers = [];
+let diagramPrinting = false;
+document.querySelectorAll('figure.rail').forEach((figure, index) => {
+  let parts = [...figure.querySelectorAll('.rail-items > span, .workflow > li, .budget, .four-grid > span, .layer, .stop-line')];
+  if (parts.length < 2) throw new Error('Diagram ' + (index + 1) + ' needs at least two playback steps.');
+  const blocked = figure.querySelector('.blocked');
+  if (blocked) parts = parts.slice(0, parts.indexOf(blocked) + 1);
+  parts.forEach((part, i) => {
+    part.classList.add('diagram-node');
+    part.dataset.diagramStep = String(i + 1);
+  });
+  const edges = [...figure.querySelectorAll('.rail-items > b')];
+  edges.forEach(edge => edge.classList.add('diagram-edge'));
+  figure.id = 'diagram-' + (index + 1);
+  let step = 0, timer = null, running = false, visible = false;
+
+  function draw() {
+    figure.dataset.diagramState = running ? 'playing' : 'overview';
+    figure.classList.toggle('diagram-running', running);
+    parts.forEach((part, i) => part.classList.toggle('diagram-current', i + 1 === step));
+    edges.forEach(edge => edge.classList.remove('diagram-current'));
+    const current = parts[step - 1];
+    const incoming = current?.previousElementSibling;
+    if (incoming?.matches('.diagram-edge')) incoming.classList.add('diagram-current');
+  }
+  function advance() {
+    step = step === parts.length ? 0 : step + 1;
+    draw();
+    timer = setTimeout(advance, 1500);
+  }
+  function syncPlayback() {
+    const shouldRun = visible && !document.hidden && !diagramMotion.matches && !diagramPrint.matches && !diagramPrinting;
+    if (shouldRun === running) return;
+    clearTimeout(timer);
+    running = shouldRun;
+    step = 0;
+    if (running) advance();
+    else draw();
+  }
+  diagramPlayers.push(syncPlayback);
+  const visibility = new IntersectionObserver(entries => {
+    visible = entries[entries.length - 1].isIntersecting;
+    syncPlayback();
+  });
+  visibility.observe(figure);
+  draw();
+});
+function syncDiagramPlayback() {
+  diagramPlayers.forEach(syncPlayback => syncPlayback());
+}
+document.addEventListener('visibilitychange', syncDiagramPlayback);
+diagramMotion.addEventListener('change', syncDiagramPlayback);
+diagramPrint.addEventListener('change', syncDiagramPlayback);
+addEventListener('beforeprint', () => { diagramPrinting = true; syncDiagramPlayback(); });
+addEventListener('afterprint', () => { diagramPrinting = false; syncDiagramPlayback(); });
+
 const notesDialog = document.getElementById('notes-dialog');
 function showNotes(context) {
   const current = Number(document.querySelector('.deck-dot[aria-current="true"]')?.getAttribute('aria-label').match(/slide (\d+)/)[1] || 1);
