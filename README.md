@@ -12,7 +12,7 @@ The article covers three connected topics:
 2. [Interoperable Payments for Agentic Commerce](#interoperable-payments-for-agentic-commerce)
 3. [Industry Progress and the Gaps](#industry-progress-and-the-gaps)
 
-For the presentation version, open the [HTML slide deck](./index.html).
+For the presentation version, [view the live slide deck](https://ra1han.github.io/Engineering-Interoperable-Payments/) on GitHub Pages, or open the [local HTML file](./index.html).
 
 ## Agentic Commerce
 
